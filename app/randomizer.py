@@ -1,28 +1,56 @@
 from fastapi import FastAPI
-from random import randint
+import platform, psutil
+import datetime
 
 app = FastAPI()
 
-@app.get("/percentage")
-async def get_random_percentage():
-    return {'percentage': randint(0, 100)}
+@app.get("/device/platform")
+async def get_platform():
+    return {'platform': platform.system(), 'datetime': datetime.datetime.now()}
 
-@app.get("/percentage/{lower_limit}/{upper_limit}")
-async def get_random_percentage1(lower_limit: int, upper_limit: int):
-    if(lower_limit >= upper_limit):
-        return {'error': 'The upper limit must be greater than the lower limit!', 'lower limit': lower_limit, 'upper limit': upper_limit}
-    return {'percentage': randint(lower_limit, upper_limit)}
+@app.get("/device/platform/{show_version}")
+async def get_platform_release(show_version: bool):
+    if(show_version):
+        return {'platform': platform.system(), 'release': platform.release(), 'version': platform.version(), 'datetime': datetime.datetime.now()}
+    return {'platform': platform.system(), 'release': platform.release(), 'datetime': datetime.datetime.now()}
 
-@app.get("/percentage/{lower_limit}/{upper_limit}/{amount}")
-async def get_random_percentage2(lower_limit: int, upper_limit: int, amount: int):
-    if(lower_limit >= upper_limit):
-        return {'error': 'The upper limit must be greater than the lower limit!', 'lower limit': lower_limit, 'upper limit': upper_limit}
+@app.get("/device/processor")
+async def get_processor():
+    return {'processor': platform.processor(), 'datetime': datetime.datetime.now()}
 
-    if (amount <= 0):
-        return {'error': 'The amount must be greater than 0!', 'amount': amount}
+@app.get("/device/interfaces/all")
+async def get_all_interfaces():
+    interfaces = []
 
-    random_numbers = []
-    for counter in range(amount):
-        random_numbers.append(randint(lower_limit, upper_limit))
+    # get all network interfaces (virtual and physical)
+    interface_addresses = psutil.net_if_addrs()
+    for interface_name in interface_addresses:
+        for address in interface_addresses[interface_name]:
+            if str(address.family) == 'AddressFamily.AF_INET':  # only IP addresses
+                interface = {}
+                interface["interface"] = interface_name
+                interface["IP address"] = address.address
+                interface["netmask"] = address.netmask
+                interfaces.append(interface)
 
-    return {'percentages': random_numbers}
+    return {'interfaces': interfaces, 'datetime': datetime.datetime.now()}
+
+@app.get("/device/interfaces/{index}")
+async def get_interface_by_index(index: int):
+    interfaces = []
+
+    # get all network interfaces (virtual and physical)
+    interface_addresses = psutil.net_if_addrs()
+    for interface_name in interface_addresses:
+        for address in interface_addresses[interface_name]:
+            if str(address.family) == 'AddressFamily.AF_INET':  # only IP addresses
+                interface = {}
+                interface["interface"] = interface_name
+                interface["IP address"] = address.address
+                interface["netmask"] = address.netmask
+                interfaces.append(interface)
+
+    if(index < 0 or index > len(interfaces)-1):
+        return {"error": "invalid index"}
+
+    return interfaces[index]
